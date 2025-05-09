@@ -1,8 +1,9 @@
 namespace Hooks
 {
-	class hkSaveGame
+	class hkSaveGame :
+		public REX::Singleton<hkSaveGame>
 	{
-	public:
+	private:
 		static bool SaveGame(void* a_this, void* a_file, const char* a_fileName, bool a_logStats)
 		{
 			if (a_fileName && !_stricmp(a_fileName, "quicksave")) {
@@ -22,9 +23,10 @@ namespace Hooks
 		inline static REL::Hook _SaveGame08{ REL::Offset(0x6A3DEA0), 0x157, SaveGame };
 	};
 
-	class hkQuickLoad
+	class hkQuickLoad :
+		public REX::Singleton<hkQuickLoad>
 	{
-	public:
+	private:
 		static void RequestLoadLastSaveGame(void* a_this)
 		{
 			using func_t = decltype(&RequestLoadLastSaveGame);
@@ -37,12 +39,32 @@ namespace Hooks
 			return RequestLoadLastSaveGame(a_this);
 		}
 
-		inline static REL::Hook _RequestQuickLoad{ REL::Offset(0x49A54D0), 0x186, RequestQuickLoad };
+		inline static REL::Hook _RequestQuickLoad{ REL::Offset(0x48B5C20), 0xC6, RequestQuickLoad };
+	};
+
+	class hkQuickLoadCheck :
+		public REX::Singleton<hkQuickLoadCheck>
+	{
+	private:
+		static void GetSlotNameFromIndex(void* a_this, void* a_slotName, std::int32_t a_slotIndex)
+		{
+			using func_t = decltype(&GetSlotNameFromIndex);
+			static REL::Relocation<func_t> func{ REL::Offset(0x48DACF0) };
+			return func(a_this, a_slotName, a_slotIndex);
+		}
+
+		static bool DoesSaveExist(void* a_this, void* a_slotName)
+		{
+			GetSlotNameFromIndex(a_this, a_slotName, 0);
+			return _DoesSaveExist(a_this, a_slotName);
+		}
+
+		inline static REL::Hook _DoesSaveExist{ REL::Offset(0x48E6440), 0x32, DoesSaveExist };
 	};
 }
 
 OBSE_PLUGIN_LOAD(const OBSE::LoadInterface* a_obse)
 {
-	OBSE::Init(a_obse, { .trampoline = true, .trampolineSize = 32 });
+	OBSE::Init(a_obse, { .trampoline = true, .trampolineSize = 64 });
 	return true;
 }
